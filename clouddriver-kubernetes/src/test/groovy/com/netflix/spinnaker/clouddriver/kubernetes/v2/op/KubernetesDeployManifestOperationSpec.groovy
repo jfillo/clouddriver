@@ -21,8 +21,10 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import com.netflix.spinnaker.clouddriver.data.task.Task
 import com.netflix.spinnaker.clouddriver.data.task.TaskRepository
 import com.netflix.spinnaker.clouddriver.kubernetes.KubernetesCloudProvider
+import com.netflix.spinnaker.clouddriver.kubernetes.config.CustomKubernetesResource
 import com.netflix.spinnaker.clouddriver.kubernetes.security.KubernetesNamedAccountCredentials
 import com.netflix.spinnaker.clouddriver.kubernetes.v2.artifact.KubernetesVersionedArtifactConverter
+import com.netflix.spinnaker.clouddriver.kubernetes.v2.description.KubernetesResourceProperties
 import com.netflix.spinnaker.clouddriver.kubernetes.v2.description.KubernetesResourcePropertyRegistry
 import com.netflix.spinnaker.clouddriver.kubernetes.v2.description.KubernetesSpinnakerKindMap
 import com.netflix.spinnaker.clouddriver.kubernetes.v2.description.manifest.KubernetesApiVersion
@@ -30,7 +32,9 @@ import com.netflix.spinnaker.clouddriver.kubernetes.v2.description.manifest.Kube
 import com.netflix.spinnaker.clouddriver.kubernetes.v2.description.manifest.KubernetesKind
 import com.netflix.spinnaker.clouddriver.kubernetes.v2.description.manifest.KubernetesManifest
 import com.netflix.spinnaker.clouddriver.kubernetes.v2.names.KubernetesManifestNamer
+import com.netflix.spinnaker.clouddriver.kubernetes.v2.op.handler.KubernetesHandler
 import com.netflix.spinnaker.clouddriver.kubernetes.v2.op.handler.KubernetesReplicaSetHandler
+import com.netflix.spinnaker.clouddriver.kubernetes.v2.op.handler.KubernetesUnregisteredCustomResourceHandler
 import com.netflix.spinnaker.clouddriver.kubernetes.v2.op.manifest.KubernetesDeployManifestOperation
 import com.netflix.spinnaker.clouddriver.kubernetes.v2.security.KubernetesV2Credentials
 import com.netflix.spinnaker.clouddriver.names.NamerRegistry
@@ -49,24 +53,6 @@ class KubernetesDeployManifestOperationSpec extends Specification {
   def VERSION = "version"
   def NAMESPACE = "my-namespace"
   def DEFAULT_NAMESPACE = "default"
-  def IMAGE = "gcr.io/project/image"
-  def KIND = KubernetesKind.REPLICA_SET
-  def API_VERSION = KubernetesApiVersion.EXTENSIONS_V1BETA1
-
-  def BASIC_REPLICA_SET = """
-apiVersion: $API_VERSION
-kind: $KIND
-metadata:
-  name: $NAME
-  namespace: $NAMESPACE
-"""
-
-  def BASIC_REPLICA_SET_NO_NAMESPACE = """
-apiVersion: $API_VERSION
-kind: $KIND
-metadata:
-  name: $NAME
-"""
 
   def setupSpec() {
     TaskRepository.threadLocalTask.set(Mock(Task))
@@ -76,7 +62,7 @@ metadata:
     return objectMapper.convertValue(yaml.load(input), KubernetesManifest)
   }
 
-  KubernetesDeployManifestOperation createMockDeployer(KubernetesV2Credentials credentials, String manifest) {
+  KubernetesDeployManifestOperation createMockDeployer(KubernetesV2Credentials credentials, String manifest, KubernetesHandler kubernetesHandler, KubernetesKind kind, boolean registerAsCrd) {
     def deployDescription = new KubernetesDeployManifestDescription()
       .setManifest(stringToManifest(manifest))
       .setMoniker(new Moniker())
@@ -89,20 +75,25 @@ metadata:
 
     credentials.deploy(_, _) >> null
 
-    def replicaSetDeployer = new KubernetesReplicaSetHandler()
-    replicaSetDeployer.versioned() >> true
-    replicaSetDeployer.kind() >> KIND
-    def versionedArtifactConverterMock = Mock(KubernetesVersionedArtifactConverter)
-    versionedArtifactConverterMock.getDeployedName(_) >> "$NAME-$VERSION"
-    versionedArtifactConverterMock.toArtifact(_, _, _) >> new Artifact()
-    def registry = new KubernetesResourcePropertyRegistry(Collections.singletonList(replicaSetDeployer),
-        new KubernetesSpinnakerKindMap())
+    def registry = new KubernetesResourcePropertyRegistry(Collections.singletonList(kubernetesHandler), new KubernetesSpinnakerKindMap())
+
+    if (registerAsCrd) {
+      CustomKubernetesResource crd = new CustomKubernetesResource()
+      crd.kubernetesKind = kind.toString()
+      KubernetesResourceProperties properties = KubernetesResourceProperties.fromCustomResource(crd)
+      registry.registerAccountProperty(ACCOUNT, properties)
+    }
 
     NamerRegistry.lookup().withProvider(KubernetesCloudProvider.ID)
       .withAccount(ACCOUNT)
       .setNamer(KubernetesManifest.class, new KubernetesManifestNamer())
 
-    registry.get("any", KubernetesKind.REPLICA_SET).versionedConverter = versionedArtifactConverterMock
+    if (kubernetesHandler.versioned()) {
+      def versionedArtifactConverterMock = Mock(KubernetesVersionedArtifactConverter)
+      versionedArtifactConverterMock.getDeployedName(_) >> "$NAME-$VERSION"
+      versionedArtifactConverterMock.toArtifact(_, _, _) >> new Artifact()
+      registry.get(ACCOUNT, kind).versionedConverter = versionedArtifactConverterMock
+    }
     
     def deployOp = new KubernetesDeployManifestOperation(deployDescription, registry, null)
 
@@ -110,10 +101,19 @@ metadata:
   }
 
   void "replica set deployer is correctly invoked"() {
+    def KIND = KubernetesKind.REPLICA_SET
+    def BASIC_REPLICA_SET = """
+apiVersion: $KubernetesApiVersion.EXTENSIONS_V1BETA1
+kind: $KIND
+metadata:
+  name: $NAME
+  namespace: $NAMESPACE
+"""
+
     setup:
     def credentialsMock = Mock(KubernetesV2Credentials)
     credentialsMock.getDefaultNamespace() >> NAMESPACE
-    def deployOp = createMockDeployer(credentialsMock, BASIC_REPLICA_SET)
+    def deployOp = createMockDeployer(credentialsMock, BASIC_REPLICA_SET, new KubernetesReplicaSetHandler(), KIND, false)
 
     when:
     def result = deployOp.operate([])
@@ -123,10 +123,18 @@ metadata:
   }
 
   void "replica set deployer uses backup namespace"() {
+    def KIND = KubernetesKind.REPLICA_SET
+    def BASIC_REPLICA_SET_NO_NAMESPACE = """
+apiVersion: $KubernetesApiVersion.EXTENSIONS_V1BETA1
+kind: $KIND
+metadata:
+  name: $NAME
+"""
+
     setup:
     def credentialsMock = Mock(KubernetesV2Credentials)
     credentialsMock.getDefaultNamespace() >> DEFAULT_NAMESPACE
-    def deployOp = createMockDeployer(credentialsMock, BASIC_REPLICA_SET_NO_NAMESPACE)
+    def deployOp = createMockDeployer(credentialsMock, BASIC_REPLICA_SET_NO_NAMESPACE, new KubernetesReplicaSetHandler(), KIND, false)
 
     when:
     def result = deployOp.operate([])
@@ -134,5 +142,26 @@ metadata:
     then:
     result.manifestNamesByNamespace[DEFAULT_NAMESPACE].size() == 1
     result.manifestNamesByNamespace[DEFAULT_NAMESPACE][0] == "$KIND $NAME-$VERSION"
+  }
+
+  void "unregistered crd deployer is correctly invoked"() {
+    def kind = KubernetesKind.fromString("ServiceMonitor.coreos.monitoring.io")
+    def REGISTERED_CRD = """
+apiVersion: coreos.monitoring.io/v1
+kind: ServiceMonitor
+metadata:
+  name: $NAME
+"""
+
+    setup:
+    def credentialsMock = Mock(KubernetesV2Credentials)
+    credentialsMock.getDefaultNamespace() >> NAMESPACE
+    def deployOp = createMockDeployer(credentialsMock, REGISTERED_CRD, new KubernetesUnregisteredCustomResourceHandler(), kind, true)
+
+    when:
+    def result = deployOp.operate([])
+    then:
+    result.manifestNamesByNamespace[NAMESPACE].size() == 1
+    result.manifestNamesByNamespace[NAMESPACE][0] == "$kind $NAME"
   }
 }
