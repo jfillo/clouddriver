@@ -86,7 +86,7 @@ class KubernetesDeleteManifestOperationSpec extends Specification {
     result.manifestNamesByNamespace[NAMESPACE][0] == "$kind $NAME"
   }
 
-  void "unregistered crd deleter is correctly invoked"() {
+  void "registered crd deleter is correctly invoked"() {
     def kind = KubernetesKind.fromString("ServiceMonitor.coreos.monitoring.io")
 
     setup:
@@ -100,5 +100,20 @@ class KubernetesDeleteManifestOperationSpec extends Specification {
     then:
     result.manifestNamesByNamespace[NAMESPACE].size() == 1
     result.manifestNamesByNamespace[NAMESPACE][0] == "$kind $NAME"
+  }
+
+  void "unregistered crd deleter throws illegal argument exception"() {
+    def kind = KubernetesKind.fromString("ServiceMonitor.coreos.monitoring.io")
+
+    setup:
+    def deleteOp = createMockDeleter(kind,
+      NAME,
+      new KubernetesUnregisteredCustomResourceHandler(),
+      false)
+
+    when:
+    def result = deleteOp.operate([])
+    then:
+    IllegalArgumentException ex = thrown()
   }
 }

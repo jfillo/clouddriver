@@ -113,7 +113,10 @@ metadata:
     setup:
     def credentialsMock = Mock(KubernetesV2Credentials)
     credentialsMock.getDefaultNamespace() >> NAMESPACE
-    def deployOp = createMockDeployer(credentialsMock, BASIC_REPLICA_SET, new KubernetesReplicaSetHandler(), KIND, false)
+    def deployOp = createMockDeployer(credentialsMock,
+      BASIC_REPLICA_SET,
+      new KubernetesReplicaSetHandler(),
+      KIND, false)
 
     when:
     def result = deployOp.operate([])
@@ -134,7 +137,11 @@ metadata:
     setup:
     def credentialsMock = Mock(KubernetesV2Credentials)
     credentialsMock.getDefaultNamespace() >> DEFAULT_NAMESPACE
-    def deployOp = createMockDeployer(credentialsMock, BASIC_REPLICA_SET_NO_NAMESPACE, new KubernetesReplicaSetHandler(), KIND, false)
+    def deployOp = createMockDeployer(credentialsMock,
+      BASIC_REPLICA_SET_NO_NAMESPACE,
+      new KubernetesReplicaSetHandler(),
+      KIND,
+      false)
 
     when:
     def result = deployOp.operate([])
@@ -144,8 +151,8 @@ metadata:
     result.manifestNamesByNamespace[DEFAULT_NAMESPACE][0] == "$KIND $NAME-$VERSION"
   }
 
-  void "unregistered crd deployer is correctly invoked"() {
-    def kind = KubernetesKind.fromString("ServiceMonitor.coreos.monitoring.io")
+  void "registered crd deployer is correctly invoked"() {
+    def KIND = KubernetesKind.fromString("ServiceMonitor.coreos.monitoring.io")
     def REGISTERED_CRD = """
 apiVersion: coreos.monitoring.io/v1
 kind: ServiceMonitor
@@ -156,12 +163,40 @@ metadata:
     setup:
     def credentialsMock = Mock(KubernetesV2Credentials)
     credentialsMock.getDefaultNamespace() >> NAMESPACE
-    def deployOp = createMockDeployer(credentialsMock, REGISTERED_CRD, new KubernetesUnregisteredCustomResourceHandler(), kind, true)
+    def deployOp = createMockDeployer(credentialsMock,
+      REGISTERED_CRD,
+      new KubernetesUnregisteredCustomResourceHandler(),
+      KIND,
+      true)
 
     when:
     def result = deployOp.operate([])
     then:
     result.manifestNamesByNamespace[NAMESPACE].size() == 1
-    result.manifestNamesByNamespace[NAMESPACE][0] == "$kind $NAME"
+    result.manifestNamesByNamespace[NAMESPACE][0] == "$KIND $NAME"
+  }
+
+  void "unregistered crd deployer throws illegal argument exception"() {
+    def KIND = KubernetesKind.fromString("ServiceMonitor.coreos.monitoring.io")
+    def REGISTERED_CRD = """
+apiVersion: coreos.monitoring.io/v1
+kind: ServiceMonitor
+metadata:
+  name: $NAME
+"""
+
+    setup:
+    def credentialsMock = Mock(KubernetesV2Credentials)
+    credentialsMock.getDefaultNamespace() >> NAMESPACE
+    def deployOp = createMockDeployer(credentialsMock,
+      REGISTERED_CRD,
+      new KubernetesUnregisteredCustomResourceHandler(),
+      KIND,
+      false)
+
+    when:
+    def result = deployOp.operate([])
+    then:
+    IllegalArgumentException ex = thrown()
   }
 }
