@@ -86,7 +86,7 @@ class KubernetesDeleteManifestOperationSpec extends Specification {
     result.manifestNamesByNamespace[NAMESPACE][0] == "$kind $NAME"
   }
 
-  void "registered crd deleter is correctly invoked"() {
+  void "registered crd non native api group deleter is correctly invoked"() {
     def kind = KubernetesKind.fromString("ServiceMonitor.coreos.monitoring.io")
 
     setup:
@@ -102,8 +102,39 @@ class KubernetesDeleteManifestOperationSpec extends Specification {
     result.manifestNamesByNamespace[NAMESPACE][0] == "$kind $NAME"
   }
 
-  void "unregistered crd deleter throws illegal argument exception"() {
+  void "unregistered crd non native api group deleter throws illegal argument exception"() {
     def kind = KubernetesKind.fromString("ServiceMonitor.coreos.monitoring.io")
+
+    setup:
+    def deleteOp = createMockDeleter(kind,
+      NAME,
+      new KubernetesUnregisteredCustomResourceHandler(),
+      false)
+
+    when:
+    def result = deleteOp.operate([])
+    then:
+    IllegalArgumentException ex = thrown()
+  }
+
+  void "registered crd is native api group deleter is correctly invoked"() {
+    def kind = KubernetesKind.fromString("VerticalPodAutoscaler.autoscaling.k8s.io")
+
+    setup:
+    def deleteOp = createMockDeleter(kind,
+      NAME,
+      new KubernetesUnregisteredCustomResourceHandler(),
+      true)
+
+    when:
+    def result = deleteOp.operate([])
+    then:
+    result.manifestNamesByNamespace[NAMESPACE].size() == 1
+    result.manifestNamesByNamespace[NAMESPACE][0] == "$kind $NAME"
+  }
+
+  void "unregistered crd is native api group deleter throws illegal argument exception"() {
+    def kind = KubernetesKind.fromString("VerticalPodAutoscaler.autoscaling.k8s.io")
 
     setup:
     def deleteOp = createMockDeleter(kind,
