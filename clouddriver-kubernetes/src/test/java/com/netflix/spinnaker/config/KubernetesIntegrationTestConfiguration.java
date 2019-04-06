@@ -37,6 +37,6 @@ public class KubernetesIntegrationTestConfiguration {
   // configuration in this file is meant to mirror com.netflix.spinnaker.clouddriver.Main
   // except the only difference being the exclusion of com.netflix.spinnaker.clouddriver.WebConfig
   // We can't just import com.netflix.spinnaker.clouddriver.Main
-  // because clouddrivee-web module is not a dependency of clouddriver-kubernetes
+  // because clouddriver-web module is not a dependency of clouddriver-kubernetes
   // and com.netflix.spinnaker.clouddriver.Main is package protected
 }

@@ -13,18 +13,27 @@ kubernetes:
       providerVersion: v2
       namespaces:
         - default
-      kinds:
-        - ServiceMonitor.monitoring.coreos.com
+      omitNamespaces: []
+      kinds: []
+      omitKinds: []
       customResources:
         - kubernetesKind: ServiceMonitor.monitoring.coreos.com
           versioned: false
       cacheIntervalSeconds: 10
+      cacheThreads: 1
+      onlySpinnakerManaged: false
       liveManifestCalls: true
     - name: another-account
       kubeconfigFile: test-config
       context: test-context
       providerVersion: v2
-      namespaces: []
+      namespaces:
+        - default
+      omitNamespaces: []
+      kinds: []
+      omitKinds: []
       customResources: []
       cacheIntervalSeconds: 10
+      cacheThreads: 1
+      onlySpinnakerManaged: false
       liveManifestCalls: true
