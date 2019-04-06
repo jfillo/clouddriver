@@ -16,40 +16,34 @@
 
 package com.netflix.spinnaker.config;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.netflix.spectator.api.DefaultRegistry;
-import com.netflix.spectator.api.Registry;
-import com.netflix.spinnaker.clouddriver.artifacts.ArtifactDownloader;
-import com.netflix.spinnaker.clouddriver.config.CloudDriverConfig;
-import com.netflix.spinnaker.clouddriver.core.services.Front50Service;
-import com.netflix.spinnaker.kork.dynamicconfig.DynamicConfigService;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import com.netflix.spinnaker.clouddriver.data.task.InMemoryTaskRepository;
+import com.netflix.spinnaker.clouddriver.data.task.TaskRepository;
+import com.netflix.spinnaker.clouddriver.security.config.SecurityConfig;
+import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
+import org.springframework.boot.autoconfigure.batch.BatchAutoConfiguration;
+import org.springframework.boot.autoconfigure.groovy.template.GroovyTemplateAutoConfiguration;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
+import org.springframework.scheduling.annotation.EnableScheduling;
 
 @Configuration
-@Import({KubernetesConfiguration.class, CloudDriverConfig.class})
+@Import({SecurityConfig.class})
+@ComponentScan({"com.netflix.spinnaker.config", "com.netflix.spinnaker.clouddriver.config"})
+@EnableAutoConfiguration(exclude = {
+  BatchAutoConfiguration.class,
+  GroovyTemplateAutoConfiguration.class
+})
+@EnableScheduling
 public class KubernetesIntegrationTestConfiguration {
+  // configuration in this file is meant to mirror com.netflix.spinnaker.clouddriver.Main
+  // except the only difference being the exclusion of com.netflix.spinnaker.clouddriver.WebConfig as
+  // this package is not a dependency of clouddriver-kubernetes
 
   @Bean
-  public ObjectMapper objectMapper() {
-    return new ObjectMapper();
-  }
-
-  @MockBean
-  private Front50Service front50Service;
-
-  @MockBean
-  public ArtifactDownloader artifactDownloader;
-
-  @Bean
-  public Registry registry() {
-    return new DefaultRegistry();
-  }
-
-  @Bean
-  public DynamicConfigService dynamicConfigService() {
-    return new DynamicConfigService.NoopDynamicConfig();
+  public TaskRepository taskRepository() {
+    // override the usage of the RedisTaskRepository
+    return new InMemoryTaskRepository();
   }
 }

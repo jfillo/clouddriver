@@ -1,3 +1,9 @@
+redis:
+  enabled: false
+caching:
+  search:
+    inMemory:
+      enabled: true
 kubernetes:
   enabled: true
   accounts:
@@ -12,9 +18,11 @@ kubernetes:
       customResources:
         - kubernetesKind: ServiceMonitor.monitoring.coreos.com
           versioned: false
+      cacheIntervalSeconds: 10
     - name: another-account
       kubeconfigFile: test-config
       context: test-context
       providerVersion: v2
       namespaces: []
       customResources: []
+      cacheIntervalSeconds: 10

@@ -18,7 +18,6 @@ package com.netflix.spinnaker.clouddriver.kubernetes.v2.op;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.gson.Gson;
-import com.netflix.spinnaker.clouddriver.data.task.Task;
 import com.netflix.spinnaker.clouddriver.data.task.TaskRepository;
 import com.netflix.spinnaker.clouddriver.jobs.JobExecutor;
 import com.netflix.spinnaker.clouddriver.jobs.JobRequest;
@@ -64,9 +63,6 @@ public class KubernetesPatchManifestOperationIT {
   @Autowired
   private KubernetesPatchManifestConverter converter;
 
-  @MockBean
-  private Task task;
-
   // we'll mock the JobExecutor because we don't actually expect to run real kubectl commands during the tests
   // but tests will verify the commands are formatted as expected
   @MockBean
@@ -75,13 +71,16 @@ public class KubernetesPatchManifestOperationIT {
   @Autowired
   private ObjectMapper objectMapper;
 
+  @Autowired
+  private TaskRepository taskRepository;
+
   private Yaml yaml = new Yaml(new SafeConstructor());
   private Gson gson = new Gson();
   private ArgumentCaptor<JobRequest> argument = ArgumentCaptor.forClass(JobRequest.class);
 
   @Before
   public void setup() {
-    TaskRepository.threadLocalTask.set(task);
+    TaskRepository.threadLocalTask.set(taskRepository.create("integration-test", "it-status"));
     when(jobExecutor.runJob(any(JobRequest.class))).thenReturn(JobResult.<String>builder().result(JobResult.Result.SUCCESS).build());
   }
 
