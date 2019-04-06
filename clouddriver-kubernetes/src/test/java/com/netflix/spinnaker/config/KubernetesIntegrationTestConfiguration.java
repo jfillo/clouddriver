@@ -16,13 +16,10 @@
 
 package com.netflix.spinnaker.config;
 
-import com.netflix.spinnaker.clouddriver.data.task.InMemoryTaskRepository;
-import com.netflix.spinnaker.clouddriver.data.task.TaskRepository;
 import com.netflix.spinnaker.clouddriver.security.config.SecurityConfig;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.boot.autoconfigure.batch.BatchAutoConfiguration;
 import org.springframework.boot.autoconfigure.groovy.template.GroovyTemplateAutoConfiguration;
-import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
@@ -40,10 +37,4 @@ public class KubernetesIntegrationTestConfiguration {
   // configuration in this file is meant to mirror com.netflix.spinnaker.clouddriver.Main
   // except the only difference being the exclusion of com.netflix.spinnaker.clouddriver.WebConfig as
   // this package is not a dependency of clouddriver-kubernetes
-
-  @Bean
-  public TaskRepository taskRepository() {
-    // override the usage of the RedisTaskRepository
-    return new InMemoryTaskRepository();
-  }
 }
