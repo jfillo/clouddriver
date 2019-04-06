@@ -1,0 +1,20 @@
+kubernetes:
+  enabled: true
+  accounts:
+    - name: test-account
+      kubeconfigFile: test-config
+      context: test-context
+      providerVersion: v2
+      namespaces:
+        - default
+      kinds:
+        - ServiceMonitor.monitoring.coreos.com
+      customResources:
+        - kubernetesKind: ServiceMonitor.monitoring.coreos.com
+          versioned: false
+    - name: another-account
+      kubeconfigFile: test-config
+      context: test-context
+      providerVersion: v2
+      namespaces: []
+      customResources: []

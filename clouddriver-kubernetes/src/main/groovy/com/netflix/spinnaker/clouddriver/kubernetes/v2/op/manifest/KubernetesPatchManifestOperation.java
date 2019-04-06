@@ -48,17 +48,17 @@ public class KubernetesPatchManifestOperation implements AtomicOperation<Operati
   private final KubernetesV2Credentials credentials;
   private final KubernetesResourcePropertyRegistry registry;
   private final String accountName;
+  private final ObjectMapper objectMapper;
   private static final String OP_NAME = "PATCH_KUBERNETES_MANIFEST";
 
-  @Autowired
-  private ObjectMapper objectMapper;
-
   public KubernetesPatchManifestOperation(KubernetesPatchManifestDescription description,
-    KubernetesResourcePropertyRegistry registry) {
+    KubernetesResourcePropertyRegistry registry,
+    ObjectMapper objectMapper) {
     this.description = description;
     this.credentials = (KubernetesV2Credentials) description.getCredentials().getCredentials();
     this.registry = registry;
     this.accountName = description.getCredentials().getName();
+    this.objectMapper = objectMapper;
   }
 
   private static Task getTask() {
