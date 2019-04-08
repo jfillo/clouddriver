@@ -44,12 +44,35 @@ public class KubernetesIntegrationTestJobRequestRepository {
     repository.clear();
 
     // provide some default top output so metrics caching kicks in
-    repository.put(new JobRequest(Arrays.asList("kubectl", "--kubeconfig=test-config", "--context=test-context", "--namespace=default", "top", "po", "--containers")),
-      JobResult.builder().result(JobResult.Result.SUCCESS).error("").output(readFileStringFromClasspath("com/netflix/spinnaker/clouddriver/kubernetes/v2/op/manifest/top.output")).build());
+    repository.put(
+      new JobRequest(Arrays.asList("kubectl",
+        "--kubeconfig=test-config",
+        "--context=test-context",
+        "--namespace=default",
+        "top",
+        "po",
+        "--containers")),
+      JobResult.builder()
+        .result(JobResult.Result.SUCCESS)
+        .output(readFileStringFromClasspath("com/netflix/spinnaker/clouddriver/kubernetes/v2/op/manifest/top.output"))
+        .error("")
+        .build());
 
     // list some crds because clusters are likely to have a few installed
-    repository.put(new JobRequest(Arrays.asList("kubectl", "--kubeconfig=test-config", "--context=test-context", "--namespace=default", "-o", "json", "get", "customResourceDefinition")),
-      JobResult.builder().result(JobResult.Result.SUCCESS).error("").output(parseManifestList(readFileStringFromClasspath("com/netflix/spinnaker/clouddriver/kubernetes/v2/op/manifest/list-customResourceDefinition.output.json"))).build());
+    repository.put(
+      new JobRequest(Arrays.asList("kubectl",
+        "--kubeconfig=test-config",
+        "--context=test-context",
+        "--namespace=default",
+        "-o",
+        "json",
+        "get",
+        "customResourceDefinition")),
+      JobResult.builder()
+        .result(JobResult.Result.SUCCESS)
+        .output(parseManifestList(readFileStringFromClasspath("com/netflix/spinnaker/clouddriver/kubernetes/v2/op/manifest/list-customResourceDefinition.output.json")))
+        .error("")
+        .build());
   }
 
   public void registerJob(JobRequest jobRequest, JobResult jobResult) {// JobResult.Result result, Object output, String error, boolean parseManifestList) {
