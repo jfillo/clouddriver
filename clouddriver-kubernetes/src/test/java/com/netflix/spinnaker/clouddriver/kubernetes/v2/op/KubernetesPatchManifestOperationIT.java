@@ -24,7 +24,6 @@ import com.netflix.spinnaker.clouddriver.jobs.JobResult;
 import com.netflix.spinnaker.clouddriver.kubernetes.v2.converter.manifest.KubernetesPatchManifestConverter;
 import com.netflix.spinnaker.clouddriver.kubernetes.v2.description.KubernetesPatchOptions;
 import com.netflix.spinnaker.clouddriver.kubernetes.v2.description.manifest.KubernetesManifest;
-import com.netflix.spinnaker.clouddriver.kubernetes.v2.op.job.KubectlJobExecutor;
 import com.netflix.spinnaker.config.KubernetesIntegrationTestConfiguration;
 import com.netflix.spinnaker.config.KubernetesIntegrationTestJobRequestRepository;
 import org.junit.Before;
@@ -130,7 +129,7 @@ public class KubernetesPatchManifestOperationIT {
     converter.convertOperation(map).operate(Collections.emptyList());
   }
 
-  @Test(expected = KubectlJobExecutor.KubectlException.class)
+  @Test
   public void patch_unregistered_crd() throws Exception {
     KubernetesManifest sourceManifest = readManifestYamlFromClasspath("com/netflix/spinnaker/clouddriver/kubernetes/v2/op/manifest/prometheus-rule-patch.yaml");
     List<String> expectedCommand = Arrays.asList("kubectl",
