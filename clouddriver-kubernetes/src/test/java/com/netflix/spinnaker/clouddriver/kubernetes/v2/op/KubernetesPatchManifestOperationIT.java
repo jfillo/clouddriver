@@ -25,7 +25,9 @@ import com.netflix.spinnaker.clouddriver.jobs.JobResult;
 import com.netflix.spinnaker.clouddriver.kubernetes.v2.converter.manifest.KubernetesPatchManifestConverter;
 import com.netflix.spinnaker.clouddriver.kubernetes.v2.description.KubernetesPatchOptions;
 import com.netflix.spinnaker.clouddriver.kubernetes.v2.description.manifest.KubernetesManifest;
+import com.netflix.spinnaker.clouddriver.kubernetes.v2.op.job.KubectlJobExecutor;
 import com.netflix.spinnaker.config.KubernetesIntegrationTestConfiguration;
+import com.netflix.spinnaker.config.KubernetesIntegrationTestJobRequestRepository;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -63,10 +65,8 @@ public class KubernetesPatchManifestOperationIT {
   @Autowired
   private KubernetesPatchManifestConverter converter;
 
-  // we'll mock the JobExecutor because we don't actually expect to run real kubectl commands during the tests
-  // but tests will verify the commands are formatted as expected
-  @MockBean
-  private JobExecutor jobExecutor;
+  @Autowired
+  private KubernetesIntegrationTestJobRequestRepository jobRequestRepository;
 
   @Autowired
   private ObjectMapper objectMapper;
@@ -76,12 +76,10 @@ public class KubernetesPatchManifestOperationIT {
 
   private Yaml yaml = new Yaml(new SafeConstructor());
   private Gson gson = new Gson();
-  private ArgumentCaptor<JobRequest> argument = ArgumentCaptor.forClass(JobRequest.class);
 
   @Before
   public void setup() {
     TaskRepository.threadLocalTask.set(taskRepository.create("integration-test", "it-status"));
-    when(jobExecutor.runJob(any(JobRequest.class))).thenReturn(JobResult.<String>builder().result(JobResult.Result.SUCCESS).build());
   }
 
   @Test
@@ -98,6 +96,8 @@ public class KubernetesPatchManifestOperationIT {
       "merge",
       "--patch",
       gson.toJson(sourceManifest));
+    jobRequestRepository.registerJob(new JobRequest(expectedCommand),
+      JobResult.Result.SUCCESS, "deployment.apps \"nginx-deployment\" updated", "", false);
 
     Map<String,Object> map = new HashMap<>();
     map.put("account","test-account");
@@ -105,12 +105,6 @@ public class KubernetesPatchManifestOperationIT {
     map.put("patchBody", sourceManifest);
     map.put("options", KubernetesPatchOptions.merge());
     converter.convertOperation(map).operate(Collections.emptyList());
-
-    verify(jobExecutor, atLeastOnce()).runJob(argument.capture());
-    Optional<JobRequest> jr = argument.getAllValues().stream()
-      .filter(j -> j.getTokenizedCommand().equals(expectedCommand))
-      .findFirst();
-    assertTrue("kubectl apply not called as expected: " + expectedCommand, jr.isPresent());
   }
 
   @Test
@@ -122,33 +116,42 @@ public class KubernetesPatchManifestOperationIT {
       "--namespace=default",
       "patch",
       "ServiceMonitor.monitoring.coreos.com",
-      "my-app",
+      "example-app",
       "--type",
       "merge",
       "--patch",
       gson.toJson(sourceManifest));
+    jobRequestRepository.registerJob(new JobRequest(expectedCommand),
+      JobResult.Result.SUCCESS, "ServiceMonitor.monitoring.coreos.com \"example-app\" updated", "", false);
 
     Map<String,Object> map = new HashMap<>();
     map.put("account","test-account");
-    map.put("manifestName", "ServiceMonitor.monitoring.coreos.com my-app");
+    map.put("manifestName", "ServiceMonitor.monitoring.coreos.com example-app");
     map.put("patchBody", sourceManifest);
     map.put("options", KubernetesPatchOptions.merge());
     converter.convertOperation(map).operate(Collections.emptyList());
-
-    verify(jobExecutor, atLeastOnce()).runJob(argument.capture());
-    Optional<JobRequest> jr = argument.getAllValues().stream()
-      .filter(j -> j.getTokenizedCommand().equals(expectedCommand))
-      .findFirst();
-    assertTrue("kubectl apply not called as expected: " + expectedCommand, jr.isPresent());
   }
 
-  @Test(expected = IllegalArgumentException.class)
+  @Test
   public void patch_unregistered_crd() throws Exception {
     KubernetesManifest sourceManifest = readManifestYamlFromClasspath("com/netflix/spinnaker/clouddriver/kubernetes/v2/op/manifest/prometheus-rule-patch.yaml");
+    List<String> expectedCommand = Arrays.asList("kubectl",
+      "--kubeconfig=test-config",
+      "--context=test-context",
+      "--namespace=default",
+      "patch",
+      "PrometheusRule.monitoring.coreos.com",
+      "prometheus-example-rules",
+      "--type",
+      "merge",
+      "--patch",
+      gson.toJson(sourceManifest));
+    jobRequestRepository.registerJob(new JobRequest(expectedCommand),
+      JobResult.Result.SUCCESS, "PrometheusRule.monitoring.coreos.com \"prometheus-example-rules\" updated", "", false);
 
     Map<String,Object> map = new HashMap<>();
     map.put("account","test-account");
-    map.put("manifestName", "PrometheusRule..monitoring.coreos.com my-app");
+    map.put("manifestName", "PrometheusRule.monitoring.coreos.com prometheus-example-rules");
     map.put("patchBody", sourceManifest);
     map.put("options", KubernetesPatchOptions.merge());
     converter.convertOperation(map).operate(Collections.emptyList());

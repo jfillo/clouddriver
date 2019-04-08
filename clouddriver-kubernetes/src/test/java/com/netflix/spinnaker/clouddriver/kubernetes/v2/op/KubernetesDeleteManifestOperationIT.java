@@ -17,18 +17,17 @@
 package com.netflix.spinnaker.clouddriver.kubernetes.v2.op;
 
 import com.netflix.spinnaker.clouddriver.data.task.TaskRepository;
-import com.netflix.spinnaker.clouddriver.jobs.JobExecutor;
 import com.netflix.spinnaker.clouddriver.jobs.JobRequest;
 import com.netflix.spinnaker.clouddriver.jobs.JobResult;
 import com.netflix.spinnaker.clouddriver.kubernetes.v2.converter.manifest.KubernetesDeleteManifestConverter;
+import com.netflix.spinnaker.clouddriver.kubernetes.v2.op.job.KubectlJobExecutor;
 import com.netflix.spinnaker.config.KubernetesIntegrationTestConfiguration;
+import com.netflix.spinnaker.config.KubernetesIntegrationTestJobRequestRepository;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.junit4.SpringRunner;
 
@@ -37,13 +36,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
-
-import static org.junit.Assert.assertTrue;
-import static org.mockito.Matchers.any;
-import static org.mockito.Mockito.atLeastOnce;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
 
 @RunWith(SpringRunner.class)
 @SpringBootTest(classes = {KubernetesIntegrationTestConfiguration.class})
@@ -53,20 +45,17 @@ public class KubernetesDeleteManifestOperationIT {
   @Autowired
   private KubernetesDeleteManifestConverter converter;
 
-  // we'll mock the JobExecutor because we don't actually expect to run real kubectl commands during the tests
-  // but tests will verify the commands are formatted as expected
-  @MockBean
-  private JobExecutor jobExecutor;
-
   @Autowired
   private TaskRepository taskRepository;
 
-  private ArgumentCaptor<JobRequest> argumentCaptor = ArgumentCaptor.forClass(JobRequest.class);
+  @Autowired
+  private KubernetesIntegrationTestJobRequestRepository jobRequestRepository;
 
   @Before
   public void setup() {
     TaskRepository.threadLocalTask.set(taskRepository.create("integration-test", "it-status"));
-    when(jobExecutor.runJob(any(JobRequest.class))).thenReturn(JobResult.<String>builder().result(JobResult.Result.SUCCESS).build());
+    jobRequestRepository.registerJob(new JobRequest(Arrays.asList("kubectl", "--kubeconfig=test-config", "--context=test-context", "--namespace=default", "delete", "none/my-app", "--ignore-not-found=true")),
+      JobResult.Result.FAILURE, "", "error: the server doesn't have a resource type \"none\"", false);
   }
 
   @Test
@@ -79,16 +68,13 @@ public class KubernetesDeleteManifestOperationIT {
       "deployment/my-app",
       "--ignore-not-found=true");
 
+    jobRequestRepository.registerJob(new JobRequest(expectedCommand),
+      JobResult.Result.SUCCESS, "deployment \"my-app\" deleted", "", false);
+
     Map<String,Object> map = new HashMap<>();
     map.put("account","test-account");
     map.put("manifestName", "Deployment.apps my-app");
     converter.convertOperation(map).operate(Collections.emptyList());
-
-    verify(jobExecutor, atLeastOnce()).runJob(argumentCaptor.capture());
-    Optional<JobRequest> jr = argumentCaptor.getAllValues().stream()
-      .filter(j -> j.getTokenizedCommand().equals(expectedCommand))
-      .findFirst();
-    assertTrue("kubectl not called as expected: " + expectedCommand, jr.isPresent());
   }
 
   @Test
@@ -101,20 +87,28 @@ public class KubernetesDeleteManifestOperationIT {
       "ServiceMonitor.monitoring.coreos.com/my-app",
       "--ignore-not-found=true");
 
+    jobRequestRepository.registerJob(new JobRequest(expectedCommand),
+      JobResult.Result.SUCCESS,"ServiceMonitor.monitoring.coreos.com \"my-app\" deleted", "", false);
+
     Map<String,Object> map = new HashMap<>();
     map.put("account","test-account");
     map.put("manifestName", "ServiceMonitor.monitoring.coreos.com my-app");
     converter.convertOperation(map).operate(Collections.emptyList());
-
-    verify(jobExecutor, atLeastOnce()).runJob(argumentCaptor.capture());
-    Optional<JobRequest> jr = argumentCaptor.getAllValues().stream()
-      .filter(j -> j.getTokenizedCommand().equals(expectedCommand))
-      .findFirst();
-    assertTrue("kubectl not called as expected: " + expectedCommand, jr.isPresent());
   }
 
-  @Test(expected = IllegalArgumentException.class)
+  @Test(expected = KubectlJobExecutor.KubectlException.class)
   public void delete_unregistered_crd() {
+    List<String> expectedCommand = Arrays.asList("kubectl",
+      "--kubeconfig=test-config",
+      "--context=test-context",
+      "--namespace=default",
+      "delete",
+      "PrometheusRule.monitoring.coreos.com/my-app",
+      "--ignore-not-found=true");
+
+    jobRequestRepository.registerJob(new JobRequest(expectedCommand),
+      JobResult.Result.SUCCESS,"PrometheusRule.monitoring.coreos.com \"my-app\" deleted", "", false);
+
     Map<String,Object> map = new HashMap<>();
     map.put("account","test-account");
     map.put("manifestName", "PrometheusRule.monitoring.coreos.com my-app");

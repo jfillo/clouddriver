@@ -16,10 +16,12 @@
 
 package com.netflix.spinnaker.config;
 
+import com.netflix.spinnaker.clouddriver.jobs.JobExecutor;
 import com.netflix.spinnaker.clouddriver.security.config.SecurityConfig;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.boot.autoconfigure.batch.BatchAutoConfiguration;
 import org.springframework.boot.autoconfigure.groovy.template.GroovyTemplateAutoConfiguration;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
@@ -39,4 +41,14 @@ public class KubernetesIntegrationTestConfiguration {
   // We can't just import com.netflix.spinnaker.clouddriver.Main
   // because clouddriver-web module is not a dependency of clouddriver-kubernetes
   // and com.netflix.spinnaker.clouddriver.Main is package protected
+
+  @Bean(initMethod = "reInitializeRepository")
+  public KubernetesIntegrationTestJobRequestRepository kubernetesIntegrationTestJobRequestRepository() {
+    return new KubernetesIntegrationTestJobRequestRepository();
+  }
+
+  @Bean
+  public JobExecutor jobExecutor(KubernetesIntegrationTestJobRequestRepository jobRequestRepository) {
+    return new KubernetesIntegrationTestJobExecutor(jobRequestRepository);
+  }
 }

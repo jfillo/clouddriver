@@ -10,6 +10,7 @@ TestScript.groovy
 .classpath
 .project
 .settings/
+.shelf/
 bin/
 application.yml
 *.hprof

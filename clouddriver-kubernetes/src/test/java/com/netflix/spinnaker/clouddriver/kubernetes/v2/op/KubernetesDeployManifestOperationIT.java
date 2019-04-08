@@ -24,6 +24,7 @@ import com.netflix.spinnaker.clouddriver.jobs.JobResult;
 import com.netflix.spinnaker.clouddriver.kubernetes.v2.converter.manifest.KubernetesDeployManifestConverter;
 import com.netflix.spinnaker.clouddriver.kubernetes.v2.description.manifest.KubernetesManifest;
 import com.netflix.spinnaker.config.KubernetesIntegrationTestConfiguration;
+import com.netflix.spinnaker.config.KubernetesIntegrationTestJobRequestRepository;
 import com.netflix.spinnaker.moniker.Moniker;
 import org.junit.Before;
 import org.junit.Test;
@@ -39,6 +40,7 @@ import org.springframework.util.StreamUtils;
 import org.yaml.snakeyaml.Yaml;
 import org.yaml.snakeyaml.constructor.SafeConstructor;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.nio.charset.Charset;
 import java.util.Arrays;
@@ -61,10 +63,8 @@ public class KubernetesDeployManifestOperationIT {
   @Autowired
   private KubernetesDeployManifestConverter converter;
 
-  // we'll mock the JobExecutor because we don't actually expect to run real kubectl commands during the tests
-  // but tests will verify the commands are formatted as expected
-  @MockBean
-  private JobExecutor jobExecutor;
+  @Autowired
+  private KubernetesIntegrationTestJobRequestRepository jobRequestRepository;
 
   @Autowired
   private ObjectMapper objectMapper;
@@ -73,63 +73,55 @@ public class KubernetesDeployManifestOperationIT {
   private TaskRepository taskRepository;
 
   private Yaml yaml = new Yaml(new SafeConstructor());
-  private ArgumentCaptor<JobRequest> argument = ArgumentCaptor.forClass(JobRequest.class);
   private List<String> expectedCommand = Arrays.asList("kubectl", "--kubeconfig=test-config", "--context=test-context", "apply", "-f", "-");
 
   @Before
   public void setup() {
     TaskRepository.threadLocalTask.set(taskRepository.create("integration-test", "it-status"));
-    when(jobExecutor.runJob(any(JobRequest.class))).thenReturn(JobResult.<String>builder().result(JobResult.Result.SUCCESS).build());
   }
 
   @Test
   public void deploy_deployment() throws Exception {
-    KubernetesManifest sourceManifest = readManifestYamlFromClasspath("com/netflix/spinnaker/clouddriver/kubernetes/v2/op/manifest/deployment.yaml");
     String expectedManifest = readFileStringFromClasspath("com/netflix/spinnaker/clouddriver/kubernetes/v2/op/manifest/deployment-applied.json").trim();
     // ^ .editorconfig forces a newline, so we need to trim it ^
+    jobRequestRepository.registerJob(new JobRequest(expectedCommand, new ByteArrayInputStream(expectedManifest.getBytes())),
+      JobResult.Result.SUCCESS, "deployment.apps \"nginx-deployment\" created", "", false);
 
+    KubernetesManifest sourceManifest = readManifestYamlFromClasspath("com/netflix/spinnaker/clouddriver/kubernetes/v2/op/manifest/deployment.yaml");
     Map<String,Object> map = new HashMap<>();
     map.put("account","test-account");
     map.put("moniker", Moniker.builder().app("test-app").build());
     map.put("manifests", Collections.singletonList(sourceManifest));
     converter.convertOperation(map).operate(Collections.emptyList());
-
-    verify(jobExecutor, atLeastOnce()).runJob(argument.capture());
-    Optional<JobRequest> jr = argument.getAllValues().stream()
-      .filter(j -> j.getTokenizedCommand().equals(expectedCommand))
-      .findFirst();
-    assertTrue("kubectl apply not called as expected", jr.isPresent());
-    assertEquals("kubectl applied manifest does not match expected", expectedManifest, StreamUtils.copyToString(jr.get().getInputStream(), Charset.defaultCharset()));
   }
 
   @Test
   public void deploy_registered_crd() throws Exception {
-    KubernetesManifest sourceManifest = readManifestYamlFromClasspath("com/netflix/spinnaker/clouddriver/kubernetes/v2/op/manifest/service-monitor.yaml");
     String expectedManifest = readFileStringFromClasspath("com/netflix/spinnaker/clouddriver/kubernetes/v2/op/manifest/service-monitor-applied.json").trim();
     // ^ .editorconfig forces a newline, so we need to trim it ^
+    jobRequestRepository.registerJob(new JobRequest(expectedCommand, new ByteArrayInputStream(expectedManifest.getBytes())),
+      JobResult.Result.SUCCESS, "ServiceMonitor.monitoring.coreos.com \"example-app\" created", "", false);
 
+    KubernetesManifest sourceManifest = readManifestYamlFromClasspath("com/netflix/spinnaker/clouddriver/kubernetes/v2/op/manifest/service-monitor.yaml");
     Map<String,Object> map = new HashMap<>();
     map.put("account","test-account");
     map.put("moniker", Moniker.builder().app("test-app").build());
     map.put("manifests", Collections.singletonList(sourceManifest));
     converter.convertOperation(map).operate(Collections.emptyList());
-
-    verify(jobExecutor, atLeastOnce()).runJob(argument.capture());
-    Optional<JobRequest> jr = argument.getAllValues().stream()
-      .filter(j -> j.getTokenizedCommand().equals(expectedCommand))
-      .findFirst();
-    assertTrue("kubectl apply not called as expected", jr.isPresent());
-    assertEquals("kubectl applied manifest does not match expected", expectedManifest, StreamUtils.copyToString(jr.get().getInputStream(), Charset.defaultCharset()));
   }
 
-  @Test(expected = IllegalArgumentException.class)
+  @Test
   public void deploy_unregistered_crd() throws Exception {
-    KubernetesManifest deployManifest = readManifestYamlFromClasspath("com/netflix/spinnaker/clouddriver/kubernetes/v2/op/manifest/prometheus-rule.yaml");
+    String expectedManifest = readFileStringFromClasspath("com/netflix/spinnaker/clouddriver/kubernetes/v2/op/manifest/prometheus-rule-applied.json").trim();
+    // ^ .editorconfig forces a newline, so we need to trim it ^
+    jobRequestRepository.registerJob(new JobRequest(expectedCommand, new ByteArrayInputStream(expectedManifest.getBytes())),
+      JobResult.Result.SUCCESS, "ServiceMonitor.monitoring.coreos.com \"prometheus-example-rules\" created", "", false);
 
+    KubernetesManifest sourceManifest = readManifestYamlFromClasspath("com/netflix/spinnaker/clouddriver/kubernetes/v2/op/manifest/prometheus-rule.yaml");
     Map<String,Object> map = new HashMap<>();
     map.put("account","test-account");
     map.put("moniker", Moniker.builder().app("test-app").build());
-    map.put("manifests", Collections.singletonList(deployManifest));
+    map.put("manifests", Collections.singletonList(sourceManifest));
     converter.convertOperation(map).operate(Collections.emptyList());
   }
 

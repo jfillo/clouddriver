@@ -1,0 +1,4 @@
+POD                                                    NAME              CPU(cores)   MEMORY(bytes)
+hello-world-web-application-698845568b-jg875           web-application   3m           416Mi
+hello-world-web-application-698845568b-jz9jr           web-application   3m           466Mi
+hello-world-web-application-698845568b-rbnw7           web-application   4m           441Mi
