@@ -46,6 +46,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import static org.junit.Assert.assertTrue;
+
 @RunWith(SpringRunner.class)
 @SpringBootTest(classes = {KubernetesIntegrationTestConfiguration.class})
 @ActiveProfiles("v2-op-manifest")
@@ -79,15 +81,16 @@ public class KubernetesDeployManifestOperationIT {
       JobResult.builder()
         .result(JobResult.Result.SUCCESS)
         .output("deployment.apps \"nginx-deployment\" created")
-        .error(""
-        ).build());
+        .error("")
+        .build());
 
     KubernetesManifest sourceManifest = readManifestYamlFromClasspath("com/netflix/spinnaker/clouddriver/kubernetes/v2/op/manifest/deployment.yaml");
     Map<String,Object> map = new HashMap<>();
     map.put("account","test-account");
     map.put("moniker", Moniker.builder().app("test-app").build());
     map.put("manifests", Collections.singletonList(sourceManifest));
-    converter.convertOperation(map).operate(Collections.emptyList());
+    OperationResult operationResult = (OperationResult)converter.convertOperation(map).operate(Collections.emptyList());
+    assertTrue(operationResult.getCreatedArtifacts().stream().anyMatch(artifact -> artifact.getName().equals("nginx-deployment")));
   }
 
   @Test
@@ -98,15 +101,16 @@ public class KubernetesDeployManifestOperationIT {
       JobResult.builder()
         .result(JobResult.Result.SUCCESS)
         .output("ServiceMonitor.monitoring.coreos.com \"example-app\" created")
-        .error(""
-        ).build());
+        .error("")
+        .build());
 
     KubernetesManifest sourceManifest = readManifestYamlFromClasspath("com/netflix/spinnaker/clouddriver/kubernetes/v2/op/manifest/service-monitor.yaml");
     Map<String,Object> map = new HashMap<>();
     map.put("account","test-account");
     map.put("moniker", Moniker.builder().app("test-app").build());
     map.put("manifests", Collections.singletonList(sourceManifest));
-    converter.convertOperation(map).operate(Collections.emptyList());
+    OperationResult operationResult = (OperationResult)converter.convertOperation(map).operate(Collections.emptyList());
+    assertTrue(operationResult.getCreatedArtifacts().stream().anyMatch(artifact -> artifact.getName().equals("example-app")));
   }
 
   @Test
@@ -117,15 +121,16 @@ public class KubernetesDeployManifestOperationIT {
       JobResult.builder()
         .result(JobResult.Result.SUCCESS)
         .output("ServiceMonitor.monitoring.coreos.com \"prometheus-example-rules\" created")
-        .error(""
-        ).build());
+        .error("")
+        .build());
 
     KubernetesManifest sourceManifest = readManifestYamlFromClasspath("com/netflix/spinnaker/clouddriver/kubernetes/v2/op/manifest/prometheus-rule.yaml");
     Map<String,Object> map = new HashMap<>();
     map.put("account","test-account");
     map.put("moniker", Moniker.builder().app("test-app").build());
     map.put("manifests", Collections.singletonList(sourceManifest));
-    converter.convertOperation(map).operate(Collections.emptyList());
+    OperationResult operationResult = (OperationResult)converter.convertOperation(map).operate(Collections.emptyList());
+    assertTrue(operationResult.getCreatedArtifacts().stream().anyMatch(artifact -> artifact.getName().equals("prometheus-example-rules")));
   }
 
   private String readFileStringFromClasspath(String file) throws IOException {
