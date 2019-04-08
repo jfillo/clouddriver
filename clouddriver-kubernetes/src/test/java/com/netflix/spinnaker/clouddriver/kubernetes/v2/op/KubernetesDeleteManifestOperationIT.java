@@ -20,7 +20,6 @@ import com.netflix.spinnaker.clouddriver.data.task.TaskRepository;
 import com.netflix.spinnaker.clouddriver.jobs.JobRequest;
 import com.netflix.spinnaker.clouddriver.jobs.JobResult;
 import com.netflix.spinnaker.clouddriver.kubernetes.v2.converter.manifest.KubernetesDeleteManifestConverter;
-import com.netflix.spinnaker.clouddriver.kubernetes.v2.op.job.KubectlJobExecutor;
 import com.netflix.spinnaker.config.KubernetesIntegrationTestConfiguration;
 import com.netflix.spinnaker.config.KubernetesIntegrationTestJobRequestRepository;
 import org.junit.Before;
@@ -54,7 +53,14 @@ public class KubernetesDeleteManifestOperationIT {
   @Before
   public void setup() {
     TaskRepository.threadLocalTask.set(taskRepository.create("integration-test", "it-status"));
-    jobRequestRepository.registerJob(new JobRequest(Arrays.asList("kubectl", "--kubeconfig=test-config", "--context=test-context", "--namespace=default", "delete", "none/my-app", "--ignore-not-found=true")),
+    jobRequestRepository.registerJob(
+      new JobRequest(Arrays.asList("kubectl",
+        "--kubeconfig=test-config",
+        "--context=test-context",
+        "--namespace=default",
+        "delete",
+        "none/my-app",
+        "--ignore-not-found=true")),
       JobResult.builder()
         .result(JobResult.Result.FAILURE)
         .output("")
@@ -108,7 +114,7 @@ public class KubernetesDeleteManifestOperationIT {
     converter.convertOperation(map).operate(Collections.emptyList());
   }
 
-  @Test(expected = KubectlJobExecutor.KubectlException.class)
+  @Test
   public void delete_unregistered_crd() {
     List<String> expectedCommand = Arrays.asList("kubectl",
       "--kubeconfig=test-config",
