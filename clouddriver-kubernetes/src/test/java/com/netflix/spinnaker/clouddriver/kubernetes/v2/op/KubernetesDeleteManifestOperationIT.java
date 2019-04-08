@@ -55,7 +55,11 @@ public class KubernetesDeleteManifestOperationIT {
   public void setup() {
     TaskRepository.threadLocalTask.set(taskRepository.create("integration-test", "it-status"));
     jobRequestRepository.registerJob(new JobRequest(Arrays.asList("kubectl", "--kubeconfig=test-config", "--context=test-context", "--namespace=default", "delete", "none/my-app", "--ignore-not-found=true")),
-      JobResult.Result.FAILURE, "", "error: the server doesn't have a resource type \"none\"", false);
+      JobResult.builder()
+        .result(JobResult.Result.FAILURE)
+        .output("")
+        .error("error: the server doesn't have a resource type \"none\"")
+        .build());
   }
 
   @Test
@@ -69,7 +73,11 @@ public class KubernetesDeleteManifestOperationIT {
       "--ignore-not-found=true");
 
     jobRequestRepository.registerJob(new JobRequest(expectedCommand),
-      JobResult.Result.SUCCESS, "deployment \"my-app\" deleted", "", false);
+      JobResult.builder()
+        .result(JobResult.Result.SUCCESS)
+        .output("deployment \"my-app\" deleted")
+        .error("")
+        .build());
 
     Map<String,Object> map = new HashMap<>();
     map.put("account","test-account");
@@ -88,7 +96,11 @@ public class KubernetesDeleteManifestOperationIT {
       "--ignore-not-found=true");
 
     jobRequestRepository.registerJob(new JobRequest(expectedCommand),
-      JobResult.Result.SUCCESS,"ServiceMonitor.monitoring.coreos.com \"my-app\" deleted", "", false);
+      JobResult.builder()
+        .result(JobResult.Result.SUCCESS)
+        .output("ServiceMonitor.monitoring.coreos.com \"my-app\" deleted")
+        .error("")
+        .build());
 
     Map<String,Object> map = new HashMap<>();
     map.put("account","test-account");
@@ -107,7 +119,11 @@ public class KubernetesDeleteManifestOperationIT {
       "--ignore-not-found=true");
 
     jobRequestRepository.registerJob(new JobRequest(expectedCommand),
-      JobResult.Result.SUCCESS,"PrometheusRule.monitoring.coreos.com \"my-app\" deleted", "", false);
+      JobResult.builder()
+        .result(JobResult.Result.SUCCESS)
+        .output("PrometheusRule.monitoring.coreos.com \"my-app\" deleted")
+        .error("")
+        .build());
 
     Map<String,Object> map = new HashMap<>();
     map.put("account","test-account");

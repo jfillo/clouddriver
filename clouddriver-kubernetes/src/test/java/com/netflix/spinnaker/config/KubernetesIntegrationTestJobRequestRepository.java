@@ -52,12 +52,8 @@ public class KubernetesIntegrationTestJobRequestRepository {
       JobResult.builder().result(JobResult.Result.SUCCESS).error("").output(parseManifestList(readFileStringFromClasspath("com/netflix/spinnaker/clouddriver/kubernetes/v2/op/manifest/list-customResourceDefinition.output.json"))).build());
   }
 
-  public void registerJob(JobRequest jobRequest, JobResult.Result result, Object output, String error, boolean parseManifestList) {
-    if(output instanceof String && parseManifestList) {
-      repository.put(jobRequest, JobResult.builder().result(result).output(parseManifestList((String)output)).error(error).build());
-    } else {
-      repository.put(jobRequest, JobResult.builder().result(result).output(output).error(error).build());
-    }
+  public void registerJob(JobRequest jobRequest, JobResult jobResult) {// JobResult.Result result, Object output, String error, boolean parseManifestList) {
+    repository.put(jobRequest, jobResult);
   }
 
   public JobResult getJobResult(JobRequest jobRequest) {

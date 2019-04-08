@@ -97,7 +97,11 @@ public class KubernetesPatchManifestOperationIT {
       "--patch",
       gson.toJson(sourceManifest));
     jobRequestRepository.registerJob(new JobRequest(expectedCommand),
-      JobResult.Result.SUCCESS, "deployment.apps \"nginx-deployment\" updated", "", false);
+      JobResult.builder()
+        .result(JobResult.Result.SUCCESS)
+        .output("deployment.apps \"nginx-deployment\" updated")
+        .error("")
+        .build());
 
     Map<String,Object> map = new HashMap<>();
     map.put("account","test-account");
@@ -122,7 +126,11 @@ public class KubernetesPatchManifestOperationIT {
       "--patch",
       gson.toJson(sourceManifest));
     jobRequestRepository.registerJob(new JobRequest(expectedCommand),
-      JobResult.Result.SUCCESS, "ServiceMonitor.monitoring.coreos.com \"example-app\" updated", "", false);
+      JobResult.builder()
+        .result(JobResult.Result.SUCCESS)
+        .output("ServiceMonitor.monitoring.coreos.com \"example-app\" updated")
+        .error("")
+        .build());
 
     Map<String,Object> map = new HashMap<>();
     map.put("account","test-account");
@@ -132,7 +140,7 @@ public class KubernetesPatchManifestOperationIT {
     converter.convertOperation(map).operate(Collections.emptyList());
   }
 
-  @Test
+  @Test(expected = KubectlJobExecutor.KubectlException.class)
   public void patch_unregistered_crd() throws Exception {
     KubernetesManifest sourceManifest = readManifestYamlFromClasspath("com/netflix/spinnaker/clouddriver/kubernetes/v2/op/manifest/prometheus-rule-patch.yaml");
     List<String> expectedCommand = Arrays.asList("kubectl",
@@ -147,7 +155,11 @@ public class KubernetesPatchManifestOperationIT {
       "--patch",
       gson.toJson(sourceManifest));
     jobRequestRepository.registerJob(new JobRequest(expectedCommand),
-      JobResult.Result.SUCCESS, "PrometheusRule.monitoring.coreos.com \"prometheus-example-rules\" updated", "", false);
+      JobResult.builder()
+        .result(JobResult.Result.SUCCESS)
+        .output("PrometheusRule.monitoring.coreos.com \"prometheus-example-rules\" updated")
+        .error("")
+        .build());
 
     Map<String,Object> map = new HashMap<>();
     map.put("account","test-account");

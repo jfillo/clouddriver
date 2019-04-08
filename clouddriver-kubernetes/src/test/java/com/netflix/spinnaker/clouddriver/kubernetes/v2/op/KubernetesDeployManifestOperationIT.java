@@ -85,7 +85,11 @@ public class KubernetesDeployManifestOperationIT {
     String expectedManifest = readFileStringFromClasspath("com/netflix/spinnaker/clouddriver/kubernetes/v2/op/manifest/deployment-applied.json").trim();
     // ^ .editorconfig forces a newline, so we need to trim it ^
     jobRequestRepository.registerJob(new JobRequest(expectedCommand, new ByteArrayInputStream(expectedManifest.getBytes())),
-      JobResult.Result.SUCCESS, "deployment.apps \"nginx-deployment\" created", "", false);
+      JobResult.builder()
+        .result(JobResult.Result.SUCCESS)
+        .output("deployment.apps \"nginx-deployment\" created")
+        .error(""
+        ).build());
 
     KubernetesManifest sourceManifest = readManifestYamlFromClasspath("com/netflix/spinnaker/clouddriver/kubernetes/v2/op/manifest/deployment.yaml");
     Map<String,Object> map = new HashMap<>();
@@ -100,7 +104,11 @@ public class KubernetesDeployManifestOperationIT {
     String expectedManifest = readFileStringFromClasspath("com/netflix/spinnaker/clouddriver/kubernetes/v2/op/manifest/service-monitor-applied.json").trim();
     // ^ .editorconfig forces a newline, so we need to trim it ^
     jobRequestRepository.registerJob(new JobRequest(expectedCommand, new ByteArrayInputStream(expectedManifest.getBytes())),
-      JobResult.Result.SUCCESS, "ServiceMonitor.monitoring.coreos.com \"example-app\" created", "", false);
+      JobResult.builder()
+        .result(JobResult.Result.SUCCESS)
+        .output("ServiceMonitor.monitoring.coreos.com \"example-app\" created")
+        .error(""
+        ).build());
 
     KubernetesManifest sourceManifest = readManifestYamlFromClasspath("com/netflix/spinnaker/clouddriver/kubernetes/v2/op/manifest/service-monitor.yaml");
     Map<String,Object> map = new HashMap<>();
@@ -115,7 +123,11 @@ public class KubernetesDeployManifestOperationIT {
     String expectedManifest = readFileStringFromClasspath("com/netflix/spinnaker/clouddriver/kubernetes/v2/op/manifest/prometheus-rule-applied.json").trim();
     // ^ .editorconfig forces a newline, so we need to trim it ^
     jobRequestRepository.registerJob(new JobRequest(expectedCommand, new ByteArrayInputStream(expectedManifest.getBytes())),
-      JobResult.Result.SUCCESS, "ServiceMonitor.monitoring.coreos.com \"prometheus-example-rules\" created", "", false);
+      JobResult.builder()
+        .result(JobResult.Result.SUCCESS)
+        .output("ServiceMonitor.monitoring.coreos.com \"prometheus-example-rules\" created")
+        .error(""
+        ).build());
 
     KubernetesManifest sourceManifest = readManifestYamlFromClasspath("com/netflix/spinnaker/clouddriver/kubernetes/v2/op/manifest/prometheus-rule.yaml");
     Map<String,Object> map = new HashMap<>();
