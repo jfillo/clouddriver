@@ -19,6 +19,8 @@ package com.netflix.spinnaker.clouddriver.kubernetes.v2.description;
 import lombok.Data;
 
 import static com.netflix.spinnaker.clouddriver.kubernetes.v2.description.KubernetesPatchOptions.MergeStrategy.json;
+import static com.netflix.spinnaker.clouddriver.kubernetes.v2.description.KubernetesPatchOptions.MergeStrategy.merge;
+import static com.netflix.spinnaker.clouddriver.kubernetes.v2.description.KubernetesPatchOptions.MergeStrategy.strategic;
 
 @Data
 public class KubernetesPatchOptions {
@@ -27,6 +29,14 @@ public class KubernetesPatchOptions {
 
   public static KubernetesPatchOptions json() {
     return new KubernetesPatchOptions().setMergeStrategy(json);
+  }
+
+  public static KubernetesPatchOptions merge() {
+    return new KubernetesPatchOptions().setMergeStrategy(merge);
+  }
+
+  public static KubernetesPatchOptions strategic() {
+    return new KubernetesPatchOptions().setMergeStrategy(strategic);
   }
 
   public enum MergeStrategy {

@@ -65,6 +65,11 @@ public class KubernetesDeleteManifestOperation implements AtomicOperation<Operat
     coordinates.forEach(c -> {
       getTask().updateStatus(OP_NAME, "Looking up resource properties for " + c.getKind() + "...");
       KubernetesResourceProperties properties = registry.get(accountName, c.getKind());
+      if (properties == null) {
+        throw new IllegalArgumentException("Unregistered Kubernetes object kind '" +
+          c.getKind() + "', unable to continue");
+      }
+
       KubernetesHandler deployer = properties.getHandler();
 
       if (!(deployer instanceof CanDelete)) {

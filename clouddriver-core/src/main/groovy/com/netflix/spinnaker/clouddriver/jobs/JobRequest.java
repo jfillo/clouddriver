@@ -17,11 +17,14 @@ package com.netflix.spinnaker.clouddriver.jobs;
 
 import lombok.Getter;
 import org.apache.commons.exec.CommandLine;
+import org.apache.commons.io.IOUtils;
 
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
+import java.nio.charset.Charset;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 @Getter
 public class JobRequest {
@@ -57,5 +60,28 @@ public class JobRequest {
     String[] arguments = tokenizedCommand.subList(1, size).toArray(new String[size - 1]);
     commandLine.addArguments(arguments, false);
     return commandLine;
+  }
+
+  private String streamToString(InputStream is) {
+    try {
+      return IOUtils.toString(is, Charset.defaultCharset());
+    } catch (Exception e) {
+      return "";
+    }
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    JobRequest that = (JobRequest) o;
+    return tokenizedCommand.equals(that.tokenizedCommand) &&
+      environment.equals(that.environment) &&
+      streamToString(inputStream).equals(streamToString(that.inputStream));
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(tokenizedCommand, environment, streamToString(inputStream));
   }
 }
